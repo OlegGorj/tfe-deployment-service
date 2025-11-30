@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	pb "github.com/OlegGorj/tfe-deployment-service/api/gen/deployment/v1"
@@ -328,7 +329,7 @@ func parseRunType(s string) (pb.RunType, error) {
 	case "destroy":
 		return pb.RunType_RUN_TYPE_DESTROY, nil
 	default:
-		return pb.RunType_RUN_TYPE_UNSPECIFIED, nil
+		return pb.RunType_RUN_TYPE_UNSPECIFIED, fmt.Errorf("invalid run type: %s, must be one of: plan, plan-apply, plan-destroy, destroy", s)
 	}
 }
 
