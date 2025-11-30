@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package deployment.v1;
+
+option go_package = "github.com/OlegGorj/tfe-deployment-service/api/gen/deployment/v1;deploymentv1";
+
+import "google/protobuf/timestamp.proto";
+
+// DeploymentStatus represents the state of a deployment
+enum DeploymentStatus {
+  DEPLOYMENT_STATUS_UNSPECIFIED = 0;
+  DEPLOYMENT_STATUS_PENDING = 1;
+  DEPLOYMENT_STATUS_RUNNING = 2;
+  DEPLOYMENT_STATUS_SUCCESS = 3;
+  DEPLOYMENT_STATUS_FAILED = 4;
+}
+
+// RunType represents the type of Terraform run
+enum RunType {
+  RUN_TYPE_UNSPECIFIED = 0;
+  RUN_TYPE_PLAN = 1;
+  RUN_TYPE_PLAN_APPLY = 2;
+  RUN_TYPE_PLAN_DESTROY = 3;
+  RUN_TYPE_DESTROY = 4;
+}
+
+// HookConfig represents configuration for a single run hook
+message HookConfig {
+  bool enabled = 1;
+  string webhook_url = 2;
+  string webhook_method = 3;
+  map<string, string> webhook_headers = 4;
+  string webhook_payload_template = 5;
+  string script_path = 6;
+  int32 timeout_seconds = 7;
+  bool fail_on_error = 8;
+}
+
+// RunHooks represents all lifecycle hooks for a TFE run
+message RunHooks {
+  HookConfig post_plan = 1;
+  HookConfig pre_apply = 2;
+  HookConfig post_apply = 3;
+}
+
+// NotificationConfig represents notification settings
+message NotificationConfig {
+  string slack_webhook_url = 1;
+  string teams_webhook_url = 2;
+  repeated string email_recipients = 3;
+  bool notify_on_success = 4;
+  bool notify_on_failure = 5;
+  bool notify_on_pending_approval = 6;
+}
+
+// WorkspaceConfig contains TFE workspace configuration
+message WorkspaceConfig {
+  string organization = 1;
+  string workspace_prefix = 2;
+  string terraform_version = 3;
+  string working_directory = 4;
+  bool auto_apply = 5;
+  string vcs_repo = 6;
+  string execution_mode = 7;
+  string agent_pool_id = 8;
+}
+
+// AppRegistry contains the configuration for an application in a specific environment
+message AppRegistry {
+  string id = 1;
+  string app_name = 2;
+  string environment = 3;
+  string azure_identity = 4;
+  string subscription_id = 5;
+  string tenant_id = 6;
+  string resource_group = 7;
+  WorkspaceConfig workspace_config = 8;
+  RunHooks run_hooks = 9;
+  map<string, string> variables = 10;
+  map<string, string> tags = 11;
+  NotificationConfig notification_config = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Workspace represents a TFE workspace
+message Workspace {
+  string id = 1;
+  string name = 2;
+  string tfe_workspace_id = 3;
+  string organization = 4;
+  string app_name = 5;
+  string environment = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Deployment represents a deployment request and its state
+message Deployment {
+  string id = 1;
+  string git_repo = 2;
+  string branch = 3;
+  string app_name = 4;
+  string environment = 5;
+  RunType run_type = 6;
+  DeploymentStatus status = 7;
+  string workspace_id = 8;
+  string tfe_run_id = 9;
+  string message = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// DeployRequest is the request to create a new deployment
+message DeployRequest {
+  string git_repo = 1;
+  string branch = 2;
+  string app_name = 3;
+  string environment = 4;
+  RunType run_type = 5;
+}
+
+// DeployResponse is the response after creating a deployment
+message DeployResponse {
+  string deployment_id = 1;
+  DeploymentStatus status = 2;
+  string message = 3;
+}
+
+// StatusRequest is the request to get deployment status
+message StatusRequest {
+  string deployment_id = 1;
+}
+
+// StatusResponse is the response with deployment status details
+message StatusResponse {
+  string deployment_id = 1;
+  DeploymentStatus status = 2;
+  string git_repo = 3;
+  string branch = 4;
+  string app_name = 5;
+  string environment = 6;
+  RunType run_type = 7;
+  string workspace_id = 8;
+  string tfe_run_id = 9;
+  string message = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// CallbackRequest is the request from TFE callback
+message CallbackRequest {
+  string run_id = 1;
+  string run_status = 2;
+  string message = 3;
+  string workflow_id = 4;
+}
+
+// CallbackResponse is the response to a callback request
+message CallbackResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// PollRequest is the request to poll deployment status
+message PollRequest {
+  string deployment_id = 1;
+}
+
+// PollResponse is the response with polling information
+message PollResponse {
+  string deployment_id = 1;
+  DeploymentStatus status = 2;
+  string tfe_run_id = 3;
+  string tfe_run_status = 4;
+  string message = 5;
+}
+
+// DeploymentService provides deployment operations
+service DeploymentService {
+  // Deploy creates a new deployment
+  rpc Deploy(DeployRequest) returns (DeployResponse);
+  
+  // GetStatus retrieves the status of a deployment
+  rpc GetStatus(StatusRequest) returns (StatusResponse);
+  
+  // Callback handles callbacks from TFE
+  rpc Callback(CallbackRequest) returns (CallbackResponse);
+  
+  // Poll polls the status of a deployment
+  rpc Poll(PollRequest) returns (PollResponse);
+}
